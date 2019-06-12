@@ -84,6 +84,20 @@ struct Vector {
         return x * x + y * y + z * z;
     }
 
+    inline Vector& operator+=(const Vector& rhs) {
+        x += rhs.x;
+        y += rhs.y;
+        z += rhs.z;
+        return *this;
+    }
+
+    inline Vector& operator-=(const Vector& rhs) {
+        x -= rhs.x;
+        y -= rhs.y;
+        z -= rhs.z;
+        return *this;
+    }
+
     real_t x;
     real_t y;
     real_t z;
@@ -91,6 +105,14 @@ struct Vector {
 
 inline Vector operator- (const Vertex& lhs, const Vertex& rhs) {
     return {lhs.x() - rhs.x(), lhs.y() - rhs.y(), lhs.z() - rhs.z()};
+}
+
+inline Vector operator+ (const Vector& lhs, const Vector& rhs) {
+    return Vector{lhs} += rhs;
+}
+
+inline Vector operator- (const Vector& lhs, const Vector& rhs) {
+    return Vector{lhs} -= rhs;
 }
 
 inline real_t operator* (const Vector& lhs, const Vector& rhs) {
@@ -296,24 +318,23 @@ private:
             halfedge[i*3 + 2].next = &halfedge[i*3];
         }
 
-        // check whether mesh is inside-out or properly oriented
+        // check whether mesh is inside-out or properly oriented --------------
         // it is an iterator to point the vertex which has the largest x coordinate
         const auto it = std::max_element(vertex.cbegin(), vertex.cend(),
                 [](const Vertex& v0, const Vertex& v1) -> bool { return v0.x() > v1.x(); });
 
-        // collect the COPY of halfedges that rotate around the vertex
-        // NOTE: values accessible through the pointer is NOT copyed
-        std::vector<HalfEdge> rot_he;
+        // collect the halfedges that rotate around the vertex
+        std::vector<HalfEdge*> rot_he;
         HalfEdge* he{it->he};
         do {
             // he is outgoing from the base vertex(*it)
             if (he->prev->to->idx == it->idx) {
-                rot_he.push_back(*he->next);
+                rot_he.push_back(he->next);
                 he = he->prev->pair;
             }
             // he is incoming to the base vertex(*it)
             else if (he->next->from->idx == it->idx) {
-                rot_he.push_back(*he->prev);
+                rot_he.push_back(he->prev);
                 he = he->next->pair;
             }
         } while (he != it->he);
@@ -321,61 +342,50 @@ private:
         // collect normalized and aligned vectors correspond to rot_he
         std::vector<Vector> rot_v;
         for (auto& he: rot_he) {
-            if (has_key(hemap1, {he.from->idx, he.to->idx})) {
-                rot_v.push_back(he.to);
+            if (has_key(hemap0, {he->from->idx, he->to->idx})) {
+                Vector v{*he->to - *he->from};
+                real_t l = v.length();
+                v.x /= l; v.y /= l; v.z /= l;
+                rot_v.push_back(v);
             }
             else {
-                rot_v.push_back(he.from);
+                Vector v{*he->from - *he->to};
+                real_t l = v.length();
+                v.x /= l; v.y /= l; v.z /= l;
+                rot_v.push_back(v);
             }
         }
 
-        std::vector<Vector> vs;
-        if (has_key(hemap0, {it->he->from->idx, it->he->to->idx})) {
-            it->
+        std::size_t N{rot_v.size()};
+        Vector normal{0, 0, 0};
+        for (std::size_t i = 0 ; i < N; ++i) {
+            normal = normal + (rot_v[i] ^ rot_v[(i+1)%N]);
         }
 
         bool insideout;
-        // sum of the x-coordinate of normal vector of which face include the vertex *it
-        real_t sum_x;
-
-        HalfEdge* he0, he1;
-        {
-            he0 = he1;
-            if (has_key(hemap0, Key{he1->pair->from->idx, he1->pair->to->idx}))
-        }
-        he
-        std::vector<std::size_t> neighbors{adj_list[it->idx]};
-        if (it->he->face->normal().x == 0) {
-            it->he->pair->face->normal
-        }
-        const Vector vec0{*(it->he->from) - *(it->he->to)};
-        const Vector vec1{*(it->he->next->to) - *(it->he->next->from)};
-        if ((vec0 ^ vec1).x > 0 && has_key(hemap1, {it->idx, }))
-        else if
-        else if
-        else
-
+        if (normal.x > 0) insideout = false;
+        else insideout = true;
 
         if (insideout && hemap0.size() > 0) {
             for (const auto& p : hemap0) {
                 HalfEdge& he{halfedge[p.second]};
-                Vertex& v_tmp{*he.to};
+                Vertex * const v_tmp{he.to};
                 he.to = he.from;
-                he.from = he.to;
+                he.from = v_tmp;
                 he.from->he = &he;
-                HalfEdge* tmp{he.next}
+                HalfEdge * const h_tmp{he.next};
                 he.next = he.prev;
-                he.prev = tmp;
+                he.prev = h_tmp;
             }
         }
         else if (!insideout && hemap1.size() > 0) {
             for (const auto& p : hemap1) {
                 HalfEdge& he{halfedge[p.second]};
-                Vertex& v_tmp{*he.to};
+                Vertex * const v_tmp{he.to};
                 he.to = he.from;
-                he.from = he.to;
+                he.from = v_tmp;
                 he.from->he = &he;
-                HalfEdge* h_tmp{he.next};
+                HalfEdge * const h_tmp{he.next};
                 he.next = he.prev;
                 he.prev = h_tmp;
             }
