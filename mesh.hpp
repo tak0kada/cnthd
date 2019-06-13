@@ -35,66 +35,6 @@ struct Mesh {
     }
 };
 
-Mesh read_obj(const std::string& path)
-{
-    std::vector<std::array<real_t, 3>> raw_vertices;
-    std::vector<std::array<std::size_t, 3>> raw_faces;
-
-    std::ifstream ifs{path};
-    std::string buf;
-
-    while (ifs.good()) {
-        ifs >> buf;
-        if (buf == "v") {
-            real_t x, y, z;
-            ifs >> x >> y >> z;
-            raw_vertices.emplace_back(x, y, z);
-        }
-        else if (buf == "f") {
-            std::size_t v0{}, v1{}, v2{};
-            ifs >> v0 >> v1 >> v2;
-            assert (v0 != 0 && v1 != 0 && v2 != 0); // each face has three vetices
-            raw_faces.emplace_back(--v0, --v1, --v2);
-        }
-        else if (buf == "#") {
-            continue;
-        }
-        else {
-            // not implemeted
-        }
-        // discard the rest of the line
-        ifs.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-    }
-
-    return Mesh{raw_vertices, raw_faces};
-}
-
-void write_obj(const Mesh& m, const std::string& path)
-{
-    std::ofstream ofs;
-    try {
-        ofs.open(path);
-    }
-    catch (std::ios_base::failure& e){
-        std::cerr << e.what() << std::endl;
-    }
-
-    for (std::size_t i = 0; i < m.vertex.size(); ++i)
-    {
-        ofs << "v " << m.vertex[i].x()
-            << " "  << m.vertex[i].y()
-            << " "  << m.vertex[i].z() << "\n";
-    }
-    for (const auto& f: m.face)
-    {
-        const std::array<Vertex*, 3> v{f.vertex()};
-        ofs << "f " << v[0]->idx + 1
-            << " "  << v[1]->idx + 1
-            << " "  << v[2]->idx + 1 << "\n";
-    }
-    ofs.close();
-}
-
 Mesh::Mesh(const std::vector<std::array<real_t, 3>>& raw_vertices,
            const std::vector<std::array<std::size_t, 3>>& raw_faces)
 :nV{raw_vertices.size()}, nF{raw_faces.size()}
@@ -251,6 +191,7 @@ Mesh::Mesh(const std::vector<std::array<real_t, 3>>& raw_vertices,
         rot = rot + (rot_vec[i] ^ rot_vec[(i+1)%N]);
     }
 
+    // inversion --------------------------------------------------------------
     // if rot.x > 0, hemap0 is the correct orientation
     // if rot.x < 0, hemap1 is the correct orientation (inside-out)
     // rot.x == 0 can not happen
@@ -258,7 +199,7 @@ Mesh::Mesh(const std::vector<std::array<real_t, 3>>& raw_vertices,
     if (rot.x > 0) insideout = false;
     else insideout = true;
 
-    if (insideout) {
+    if (insideout /* && hemap0.size() > 0 */) {
         for (const std::pair<Key, std::size_t>& p : hemap0) {
             HalfEdge& he{halfedge[p.second]};
             Vertex * const v_tmp{he.to};
@@ -282,6 +223,66 @@ Mesh::Mesh(const std::vector<std::array<real_t, 3>>& raw_vertices,
             he.prev = h_tmp;
         }
     }
+}
+
+Mesh read_obj(const std::string& path)
+{
+    std::vector<std::array<real_t, 3>> raw_vertices;
+    std::vector<std::array<std::size_t, 3>> raw_faces;
+
+    std::ifstream ifs{path};
+    std::string buf;
+
+    while (ifs.good()) {
+        ifs >> buf;
+        if (buf == "v") {
+            real_t x, y, z;
+            ifs >> x >> y >> z;
+            raw_vertices.emplace_back(x, y, z);
+        }
+        else if (buf == "f") {
+            std::size_t v0{}, v1{}, v2{};
+            ifs >> v0 >> v1 >> v2;
+            assert (v0 != 0 && v1 != 0 && v2 != 0); // each face has three vetices
+            raw_faces.emplace_back(--v0, --v1, --v2);
+        }
+        else if (buf == "#") {
+            continue;
+        }
+        else {
+            // not implemeted
+        }
+        // discard the rest of the line
+        ifs.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
+
+    return Mesh{raw_vertices, raw_faces};
+}
+
+void write_obj(const Mesh& m, const std::string& path)
+{
+    std::ofstream ofs;
+    try {
+        ofs.open(path);
+    }
+    catch (std::ios_base::failure& e){
+        std::cerr << e.what() << std::endl;
+    }
+
+    for (std::size_t i = 0; i < m.vertex.size(); ++i)
+    {
+        ofs << "v " << m.vertex[i].x()
+            << " "  << m.vertex[i].y()
+            << " "  << m.vertex[i].z() << "\n";
+    }
+    for (const auto& f: m.face)
+    {
+        const std::array<Vertex*, 3> v{f.vertex()};
+        ofs << "f " << v[0]->idx + 1
+            << " "  << v[1]->idx + 1
+            << " "  << v[2]->idx + 1 << "\n";
+    }
+    ofs.close();
 }
 
 } // end of namespace cnthd
