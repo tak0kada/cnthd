@@ -237,7 +237,7 @@ struct Face {
 
 std::ostream& operator<<(std::ostream& os, const HalfEdge& he)
 {
-    os << "he: " << he.from->idx + 1 << "->" << he.to->idx + 1;
+    os << "he" << he.idx + 1 << ": " << he.from->idx + 1 << "->" << he.to->idx + 1;
     return os;
 }
 

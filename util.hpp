@@ -34,15 +34,15 @@ bool has_key(const unordered_map& map, const std::pair<std::size_t, std::size_t>
 
 std::ostream& operator<<(std::ostream& os, const unordered_map& umap)
 {
+    os << "{";
     for (const auto& pair: umap)
     {
-        os << "{";
         const auto& key{std::get<0>(pair)};
         const auto& elem{std::get<1>(pair)};
 
         os << "{" << std::get<0>(key) << "-> " << std::get<1>(key) << "}: " << elem << "\n";
     }
-    os << "\b";
+    os << "\b}";
     return os;
 }
 
