@@ -35,13 +35,24 @@ struct Mesh
     Mesh(const std::vector<std::array<real_t, 3>>& raw_vertices,
          const std::vector<std::array<std::size_t, 3>>& raw_faces);
 
-    // not implemented
-    void fix_orientation();
-
     int num_genus() const
     {
         return 1 - (nV - nE + nF)/2;
     }
+
+    Mesh& move(const Vector& vec)
+    {
+        for (Vertex& v: vertex)
+        {
+            v.p[0] = v.p[0] + vec.x;
+            v.p[1] = v.p[1] + vec.y;
+            v.p[2] = v.p[2] + vec.z;
+        }
+        return *this;
+    }
+
+    // not implemented
+    Mesh& fix_orientation();
 };
 
 Mesh::Mesh(const std::vector<std::array<real_t, 3>>& raw_vertices,
@@ -133,11 +144,13 @@ Mesh::Mesh(const std::vector<std::array<real_t, 3>>& raw_vertices,
 }
 
 // not implemented
-void Mesh::fix_orientation()
+Mesh& Mesh::fix_orientation()
 {
     // draft version is below
     // https://github.com/tak0kada/cnthd/commit/e83fdae303cf77ccdc51c4271f7f5d2da1160539#diff-dab052ca81d83cdfb81dc79cf4dcc38d
     // note the algorithm has bugs in it.
+    std::cerr << "NOTE: Mesh::fix_orientation is not implmented!" << std::endl;
+    return *this;
 }
 
 Mesh read_obj(const std::string& path)

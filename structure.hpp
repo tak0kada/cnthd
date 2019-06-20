@@ -51,19 +51,23 @@ struct Vertex {
     std::array<real_t, 3> p;
     HalfEdge* he_out;
 
+    Vertex(std::size_t idx, real_t x, real_t y, real_t z, HalfEdge* he_out)
+    :idx{idx}, p{x, y, z}, he_out{he_out}
+    {}
+
     real_t& x() { return p[0]; }
     const real_t& x() const { return p[0]; }
     real_t& y() { return p[1]; }
     const real_t& y() const { return p[1]; }
     real_t& z() { return p[2]; }
     const real_t& z() const { return p[2]; }
-
-    Vertex(std::size_t idx, real_t x, real_t y, real_t z, HalfEdge* he_out)
-    :idx{idx}, p{x, y, z}, he_out{he_out}
-    {}
 };
 
 struct Vector {
+    real_t x;
+    real_t y;
+    real_t z;
+
     Vector(const real_t& x, const real_t& y, const real_t& z)
     : x{x}, y{y}, z{z}
     {}
@@ -107,10 +111,6 @@ struct Vector {
     {
         return x * v.x + y * v.y + z * v.z;
     }
-
-    real_t x;
-    real_t y;
-    real_t z;
 };
 
 Vector unit_vec(const Vector& vec)
@@ -141,9 +141,19 @@ inline Vector operator^ (const Vector& lhs, const Vector& rhs)
             lhs.x * rhs.y - lhs.y * rhs.x};
 }
 
+bool operator==(const Vector& lhs, const Vector& rhs)
+{
+    return (lhs.x == rhs.x || lhs.y == rhs.y || lhs.z == rhs.z);
+}
+
+
 struct Edge {
     std::size_t idx;
     HalfEdge* he;
+
+    Edge(const std::size_t& idx, HalfEdge * const he)
+    : idx{idx}, he{he}
+    {}
 
     real_t norm() const
     {
@@ -164,15 +174,15 @@ struct Edge {
     {
         return {he->from, he->to};
     }
-
-    Edge(const std::size_t& idx, HalfEdge * const he)
-    : idx{idx}, he{he}
-    {}
 };
 
 struct Face {
     std::size_t idx;
     HalfEdge* he;
+
+    Face(const std::size_t& idx, HalfEdge * const he)
+    :idx{idx}, he{he}
+    {}
 
     std::tuple<Vertex*, Vertex*, Vertex*> vertex()
     {
@@ -193,33 +203,16 @@ struct Face {
 
     real_t area() const
     {
-        const Vector v0{*he->from - *he->to};
-        const Vector v1{*he->from - *he->to};
-        const Vector v2{*he->from - *he->to};
+        const Vector v0{*he->to - *he->from};
+        const Vector v1{*he->next->to - *he->to};
+        const Vector v2{*he->from - *he->prev->from};
         const real_t a{v0.norm()};
         const real_t b{v1.norm()};
         const real_t c{v2.norm()};
         const real_t d{2*a*b + 2*b*c + 2*c*a - a*a - b*b - c*c};
 
         if (d <= 0) return 0;
-        return std::sqrt(d) * 0.625;
-    }
-
-    real_t sph_area() const {
-        const auto [vert0, vert1, vert2] = vertex();
-        const Vector v0{vert0->x(), vert0->y(), vert0->z()};
-        const Vector v1{vert0->x(), vert0->y(), vert0->z()};
-        const Vector v2{vert0->x(), vert0->y(), vert0->z()};
-
-        // unit normal to each Vector vn
-        const Vector n02{unit_vec(v2 - v0 * (v0*v2 / v0.norm()))};
-        const Vector n01{unit_vec(v1 - v0 * (v0*v1 / v0.norm()))};
-        const Vector n10{unit_vec(v0 - v1 * (v1*v0 / v1.norm()))};
-        const Vector n12{unit_vec(v2 - v1 * (v1*v2 / v1.norm()))};
-        const Vector n21{unit_vec(v1 - v2 * (v2*v1 / v2.norm()))};
-        const Vector n20{unit_vec(v0 - v2 * (v2*v0 / v2.norm()))};
-
-        return pi * 2 - std::acos(n02 * n01) - std::acos(n10 * n12) - std::acos(n21 * n20);
+        return std::sqrt(d * 0.0625);
     }
 
     Vector normal() const
@@ -229,10 +222,6 @@ struct Face {
         const Vector v2{v0^v1};
         return {v2.x / v2.length(), v2.y / v2.length(), v2.z / v2.length()};
     }
-
-    Face(const std::size_t& idx, HalfEdge * const he)
-    :idx{idx}, he{he}
-    {}
 };
 
 std::ostream& operator<<(std::ostream& os, const HalfEdge& he)
