@@ -27,7 +27,8 @@ struct Face;
 // definition
 //-----------------------------------------------------------------------------
 
-struct HalfEdge {
+struct HalfEdge
+{
     std::size_t idx;
     Vertex* from;
     Vertex* to;
@@ -46,7 +47,8 @@ struct HalfEdge {
     {}
 };
 
-struct Vertex {
+struct Vertex
+{
     std::size_t idx;
     std::array<real_t, 3> p;
     HalfEdge* he_out;
@@ -55,15 +57,16 @@ struct Vertex {
     :idx{idx}, p{x, y, z}, he_out{he_out}
     {}
 
-    real_t& x() { return p[0]; }
-    const real_t& x() const { return p[0]; }
-    real_t& y() { return p[1]; }
-    const real_t& y() const { return p[1]; }
-    real_t& z() { return p[2]; }
-    const real_t& z() const { return p[2]; }
+    inline real_t& x() { return p[0]; }
+    inline const real_t& x() const { return p[0]; }
+    inline real_t& y() { return p[1]; }
+    inline const real_t& y() const { return p[1]; }
+    inline real_t& z() { return p[2]; }
+    inline const real_t& z() const { return p[2]; }
 };
 
-struct Vector {
+struct Vector
+{
     real_t x;
     real_t y;
     real_t z;
@@ -147,7 +150,8 @@ bool operator==(const Vector& lhs, const Vector& rhs)
 }
 
 
-struct Edge {
+struct Edge
+{
     std::size_t idx;
     HalfEdge* he;
 
@@ -176,7 +180,8 @@ struct Edge {
     }
 };
 
-struct Face {
+struct Face
+{
     std::size_t idx;
     HalfEdge* he;
 
@@ -192,6 +197,7 @@ struct Face {
     {
         return {he->from, he->to, he->next->to};
     }
+
     std::tuple<Edge*, Edge*, Edge*> edge()
     {
         return {he->edge, he->next->edge, he->prev->edge};
@@ -256,4 +262,5 @@ std::ostream& operator<<(std::ostream& os, const Face& f)
     os << "f" << f.idx + 1 << ": " << f.he->from->idx + 1 << "-" << f.he->to->idx + 1 << "-" << f.he->next->to->idx + 1;
     return os;
 }
+
 } // end of namespace cnthd

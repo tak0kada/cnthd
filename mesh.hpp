@@ -60,17 +60,21 @@ Mesh::Mesh(const std::vector<std::array<real_t, 3>>& raw_vertices,
 :nV{raw_vertices.size()}, nF{raw_faces.size()}
 {
     //-------------------------------------------------------------------------
-    // build adjacent matrix and adjacent list
-    //-------------------------------------------------------------------------
-    adj_mat.resize(nV, nV);
-    adj_list.resize(nV);
-
-    //-------------------------------------------------------------------------
     nE = nF * 3 / 2; // triangular mesh
     vertex.reserve(nV);
     edge.reserve(nE);
     halfedge.reserve(nE * 2);
     face.reserve(nF);
+
+    //-------------------------------------------------------------------------
+    // build adjacent matrix and adjacent list
+    //-------------------------------------------------------------------------
+    adj_mat.resize(nV, nV);
+    if (nV != 0)
+    {
+        adj_mat.reserve(Eigen::VectorXi::Constant(nV, 2 * nE / nV + 5));
+    }
+    adj_list.resize(nV);
 
     //-------------------------------------------------------------------------
     // build vertex
@@ -106,24 +110,28 @@ Mesh::Mesh(const std::vector<std::array<real_t, 3>>& raw_vertices,
                 /* <HalfEdge*>prev= */ nullptr, /* <HalfEdge*>next= */ nullptr, /* <HalfEdge*>pair= */ nullptr,
                 /* <Edge*>edge= */ nullptr, &face[i]);
 
-            Key key0{rf[j%3], rf[(j+1)%3]};
-            Key key1{rf[(j+1)%3], rf[j%3]};
-            if (has_key(existedge, key0))
+            Key key{};
+            if (rf[j%3] > rf[(j+1)%3])
             {
-                halfedge[i*3 + j].pair = edge[existedge[key0]].he;
-                halfedge[i*3 + j].edge = &edge[existedge[key0]];
+                key = {rf[j%3], rf[(j+1)%3]};
             }
-            else if (has_key(existedge, key1))
+            else
             {
-                halfedge[i*3 + j].pair = edge[existedge[key1]].he;
-                halfedge[i*3 + j].edge = &edge[existedge[key1]];
+                key = {rf[(j+1)%3], rf[j%3]};
+            }
+
+            const auto iter = existedge.find(key);
+            if (iter != existedge.end())
+            {
+                halfedge[i*3 + j].pair = edge[iter->second].he;
+                halfedge[i*3 + j].edge = &edge[iter->second];
             }
             else
             {
                 edge.emplace_back(edge.size(), &halfedge[i*3 + j]);
-                existedge[key0] = edge.size() - 1;
-                adj_mat.coeffRef(rf[j%3], rf[(j+1)%3]) = 1;
-                adj_mat.coeffRef(rf[(j+1)%3], rf[j%3]) = 1;
+                existedge.emplace(key, edge.size() - 1);
+                adj_mat.insert(rf[j%3], rf[(j+1)%3]) = 1;
+                adj_mat.insert(rf[(j+1)%3], rf[j%3]) = 1;
                 adj_list[rf[j%3]].push_back(rf[(j+1)%3]);
                 adj_list[rf[(j+1)%3]].push_back(rf[j%3]);
             }
@@ -207,7 +215,7 @@ Mesh read_obj(const std::string& path)
     }
 
     Mesh mesh{raw_vertices, raw_faces};
-    mesh.fix_orientation();
+    // mesh.fix_orientation();
     return mesh;
 }
 
