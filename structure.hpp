@@ -89,6 +89,11 @@ struct Vector
         return x * x + y * y + z * z;
     }
 
+    Vector operator-() const
+    {
+        return {-x, -y, -z};
+    }
+
     Vector& operator+=(const Vector& rhs)
     {
         x += rhs.x;
