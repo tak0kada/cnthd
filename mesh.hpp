@@ -51,6 +51,22 @@ struct Mesh
         return *this;
     }
 
+    Mesh& rotate(const std::array<real_t, 4>& quaternion)
+    {
+        const auto& q = quaternion;
+        for (Vertex& v: vertex)
+        {
+            const real_t x = v.x();
+            const real_t y = v.y();
+            const real_t z = v.z();
+            // the formula is calculated using sympy
+            v.p[0] = q[0]*q[0]*x + 2*q[0]*q[2]*z - 2*q[0]*q[3]*y + q[1]*q[1]*x + 2*q[1]*q[2]*y + 2*q[1]*q[3]*z - q[2]*q[2]*x - q[3]*q[3]*x;
+            v.p[1] = q[0]*q[0]*y - 2*q[0]*q[1]*z + 2*q[0]*q[3]*x - q[1]*q[1]*y + 2*q[1]*q[2]*x + q[2]*q[2]*y + 2*q[2]*q[3]*z - q[3]*q[3]*y;
+            v.p[2] = q[0]*q[0]*z + 2*q[0]*q[1]*y - 2*q[0]*q[2]*x - q[1]*q[1]*z + 2*q[1]*q[3]*x - q[2]*q[2]*z + 2*q[2]*q[3]*y + q[3]*q[3]*z;
+        }
+        return *this;
+    }
+
     // not implemented
     Mesh& fix_orientation();
 };
