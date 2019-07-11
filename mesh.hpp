@@ -67,6 +67,19 @@ struct Mesh
         return *this;
     }
 
+    Mesh& rotate(const Eigen::Matrix3d& Mat)
+    {
+        for (Vertex& v: vertex)
+        {
+            Eigen::Vector3d tmp{v.x(), v.y(), v.z()};
+            tmp = Mat * tmp;
+            v.p[0] = tmp[0];
+            v.p[1] = tmp[1];
+            v.p[2] = tmp[2];
+        }
+        return *this;
+    }
+
     // not implemented
     Mesh& fix_orientation();
 };
