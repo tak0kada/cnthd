@@ -2,11 +2,12 @@
 
 #include <array>
 #include <vector>
+#include <string>
 #include <utility>
 #include <tuple>
 #include <iostream>
 #include <fstream>
-#include <string>
+#include <exception>
 #include <algorithm>
 #include <eigen3/Eigen/Sparse>
 #include <eigen3/Eigen/Core>
@@ -198,8 +199,7 @@ Mesh read_obj(const std::string& path)
     std::ifstream ifs{path};
     if (ifs.fail())
     {
-        std::cerr << "Can not open obj file" << std::endl;
-        return {{}, {}};
+        throw std::runtime_error("ERROR: cannot open obj file: " + path + ".");
     }
 
     std::string buf;
