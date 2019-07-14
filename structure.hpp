@@ -5,16 +5,19 @@
 #include <cmath>
 #include <utility>
 #include <tuple>
+#include <iostream>
 #include <iomanip>
+#include <cassert>
+#include <eigen3/Eigen/Core>
+#include <boost/preprocessor/cat.hpp>
 #include "util.hpp"
-// #include "vector.hpp"
 
 
 namespace cnthd {
 
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 // foward declaration
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 struct HalfEdge;
 struct Vertex;
@@ -23,10 +26,11 @@ struct HalfEdge;
 struct Face;
 
 
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 // definition
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
+//------------------------------------------------------------------------------
 struct HalfEdge
 {
     std::size_t idx;
@@ -47,6 +51,7 @@ struct HalfEdge
     {}
 };
 
+//------------------------------------------------------------------------------
 struct Vertex
 {
     std::size_t idx;
@@ -65,6 +70,7 @@ struct Vertex
     inline const real_t& z() const { return p[2]; }
 };
 
+//------------------------------------------------------------------------------
 struct Vector
 {
     real_t x;
@@ -154,7 +160,7 @@ bool operator==(const Vector& lhs, const Vector& rhs)
     return (lhs.x == rhs.x || lhs.y == rhs.y || lhs.z == rhs.z);
 }
 
-
+//------------------------------------------------------------------------------
 struct Edge
 {
     std::size_t idx;
@@ -185,6 +191,7 @@ struct Edge
     }
 };
 
+//------------------------------------------------------------------------------
 struct Face
 {
     std::size_t idx;
@@ -235,6 +242,128 @@ struct Face
     }
 };
 
+//------------------------------------------------------------------------------
+struct Quaternion
+{
+    real_t x;
+    real_t y;
+    real_t z;
+    real_t w;
+
+    Quaternion(const real_t& x, const real_t& y, const real_t& z, const real_t& w = 0)
+    : x{x}, y{y}, z{z}, w{w}
+    {}
+
+    template<typename T = std::size_t,
+             typename std::enable_if<std::is_convertible<T, const std::size_t>::value>::type* = nullptr>
+    real_t& operator[](const T& i)
+    {
+        auto n = static_cast<std::size_t>(i);
+        CNTHD_ASSERT(0 <= n && n <= 3, "ERROR: index of quaternion should be in range [0,3]");
+        switch(i)
+        {
+            case 0:
+                return x;
+            case 1:
+                return y;
+            case 2:
+                return z;
+            case 3:
+                return w;
+        }
+    }
+
+    template<typename T = std::size_t,
+             typename std::enable_if<std::is_convertible<T, const std::size_t>::value>::type* = nullptr>
+    const real_t& operator[](const T& i) const
+    {
+        auto n = static_cast<std::size_t>(i);
+        CNTHD_ASSERT(0 <= n && n <= 3, "ERROR: index of quaternion should be in range [0,3]");
+        switch(i)
+        {
+            case 0:
+                return x;
+            case 1:
+                return y;
+            case 2:
+                return z;
+            case 3:
+                return w;
+        }
+    }
+
+    explicit operator Eigen::Matrix3d() const
+    {
+        Eigen::Matrix3d Mat;
+        Mat << w*w + x*x - y*y - z*z, -2*w*z + 2*x*y, 2*w*y + 2*x*z,
+               2*w*z + 2*x*y, w*w - x*x + y*y - z*z, -2*w*x + 2*y*z,
+               -2*w*y + 2*x*z, 2*w*x + 2*y*z, w*w - x*x - y*y + z*z;
+        return Mat;
+    }
+
+    explicit operator Vector() const
+    {
+        return {x, y, z};
+    }
+
+    Quaternion operator-() const
+    {
+        return {-x, -y, -z, -w};
+    }
+
+    Quaternion& operator+=(const Quaternion& rhs)
+    {
+        x += rhs.x;
+        y += rhs.y;
+        z += rhs.z;
+        w += rhs.w;
+        return *this;
+    }
+
+    Quaternion& operator-=(const Quaternion& rhs)
+    {
+        x -= rhs.x;
+        y -= rhs.y;
+        z -= rhs.z;
+        w -= rhs.w;
+        return *this;
+    }
+
+    // only q * r, not r * q
+    Quaternion operator*(const real_t& r) const
+    {
+        return {x * r, y * r, z * r, w * r};
+    }
+};
+
+Quaternion operator* (const Quaternion& lhs, const Quaternion& rhs)
+{
+    const real_t w = lhs.w*rhs.w - lhs.x*rhs.x - lhs.y*rhs.y - lhs.z*rhs.z;
+    const real_t x = lhs.w*rhs.x + lhs.x*rhs.w + lhs.y*rhs.z - lhs.z*rhs.y;
+    const real_t y = lhs.w*rhs.y - lhs.x*rhs.z + lhs.y*rhs.w + lhs.z*rhs.x;
+    const real_t z = lhs.w*rhs.z + lhs.x*rhs.y - lhs.y*rhs.x + lhs.z*rhs.w;
+    return {x, y, z, w};
+}
+
+inline Quaternion operator+ (const Quaternion& lhs, const Quaternion& rhs)
+{
+    return Quaternion{lhs} += rhs;
+}
+
+inline Quaternion operator- (const Quaternion& lhs, const Quaternion& rhs)
+{
+    return Quaternion{lhs} -= rhs;
+}
+
+bool operator==(const Quaternion& lhs, const Quaternion& rhs)
+{
+    return (lhs.x == rhs.x || lhs.y == rhs.y || lhs.z == rhs.z || lhs.w == rhs.w);
+}
+
+//------------------------------------------------------------------------------
+// OUTPUT
+//------------------------------------------------------------------------------
+
 std::ostream& operator<<(std::ostream& os, const HalfEdge& he)
 {
     os << "he" << he.idx + 1 << ": " << he.from->idx + 1 << "->" << he.to->idx + 1;
@@ -265,6 +394,12 @@ std::ostream& operator<<(std::ostream& os, const Edge& e)
 std::ostream& operator<<(std::ostream& os, const Face& f)
 {
     os << "f" << f.idx + 1 << ": " << f.he->from->idx + 1 << "-" << f.he->to->idx + 1 << "-" << f.he->next->to->idx + 1;
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Quaternion& q)
+{
+    os << "quaternion " << "{" << q.x << ", " << q.y << ", " << q.z << "," << q.w << "}";
     return os;
 }
 

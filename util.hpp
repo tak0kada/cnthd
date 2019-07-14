@@ -9,6 +9,12 @@
 #include <boost/math/constants/constants.hpp>
 
 
+// http://fimbul.hateblo.jp/entry/2013/08/19/174519
+#define CNTHD_ASSERT(expr, message) \
+{using BOOST_PP_CAT(cnthd_static_assert, __LINE__) = int[expr ? 0 : -1];}\
+{using BOOST_PP_CAT(cnthd_cassert, __LINE__) = int[expr ? 0 : (assert((#message, false)), 1)];}
+
+
 namespace cnthd
 {
 
@@ -26,61 +32,64 @@ struct pair_hash
 
 using unordered_map = std::unordered_map<std::pair<std::size_t, std::size_t>, std::size_t, pair_hash>;
 
+// bool has_key(const unordered_map& map, const std::pair<std::size_t, std::size_t>& k)
+// {
+//     return map.find(k) != map.end();
+// }
 
-bool has_key(const unordered_map& map, const std::pair<std::size_t, std::size_t>& k)
+namespace util
 {
-    return map.find(k) != map.end();
-}
 
-std::ostream& operator<<(std::ostream& os, const unordered_map& umap)
-{
-    os << "{";
-    for (const auto& pair: umap)
+    template <typename T, std::size_t N>
+    std::ostream& operator<<(std::ostream& os, const std::array<T, N>& arr)
     {
-        const auto& key{std::get<0>(pair)};
-        const auto& elem{std::get<1>(pair)};
-
-        os << "{" << std::get<0>(key) << "-> " << std::get<1>(key) << "}: " << elem << "\n";
-    }
-    os << "\b}";
-    return os;
-}
-
-
-template <typename T, std::size_t N>
-std::ostream& operator<<(std::ostream& os, const std::array<T, N>& arr)
-{
-    if (arr.empty())
-    {
-        os << "{}";
-    }
-    else{
-        os << "{";
-        for (const auto& a: arr)
+        if (arr.empty())
         {
-            os << a << ", ";
+            os << "{}";
         }
-        os << "\b\b}";
+        else{
+            os << "{";
+            for (const auto& a: arr)
+            {
+                os << a << ", ";
+            }
+            os << "\b\b}";
+        }
+        return os;
     }
-    return os;
-}
 
-template <typename T>
-std::ostream& operator<<(std::ostream& os, const std::vector<T>& vec)
-{
-    if (vec.empty())
+    template <typename T>
+    std::ostream& operator<<(std::ostream& os, const std::vector<T>& vec)
     {
-        os << "{}";
-    }
-    else{
-        os << "{";
-        for (const auto& v: vec)
+        if (vec.empty())
         {
-            os << v << ", ";
+            os << "{}";
         }
-        os << "\b\b}";
+        else{
+            os << "{";
+            for (const auto& v: vec)
+            {
+                os << v << ", ";
+            }
+            os << "\b\b}";
+        }
+        return os;
     }
-    return os;
-}
+
+    // std::ostream& operator<<(std::ostream& os, const unordered_map& umap)
+    // {
+    //     os << "{";
+    //     for (const auto& pair: umap)
+    //     {
+    //         const auto& key{std::get<0>(pair)};
+    //         const auto& elem{std::get<1>(pair)};
+    //
+    //         os << "{" << std::get<0>(key) << "-> " << std::get<1>(key) << "}: " << elem << "\n";
+    //     }
+    //     os << "\b}";
+    //     return os;
+    // }
+
+} // end of namespace util
 
 } // end of namespace cnthd

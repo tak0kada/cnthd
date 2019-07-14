@@ -52,7 +52,7 @@ struct Mesh
         return *this;
     }
 
-    Mesh& rotate(const std::array<real_t, 4>& quaternion)
+    Mesh& rotate(const Quaternion& quaternion)
     {
         const auto& q = quaternion;
         for (Vertex& v: vertex)
@@ -244,7 +244,6 @@ Mesh read_obj(const std::string& path)
     }
 
     Mesh mesh{raw_vertices, raw_faces};
-    // mesh.fix_orientation();
     return mesh;
 }
 
@@ -278,6 +277,8 @@ void write_obj(const Mesh& m, const std::string& path)
 
 std::ostream& operator<<(std::ostream& os, const Mesh& mesh)
 {
+    using namespace cnthd::util;
+
     os << boost::format("nV: %zu, nE: %zu, nF: %zu, g = 1 - 0.5 * (nV - nE + nF) = %d")
           % mesh.nV % mesh.nE % mesh.nF % mesh.num_genus()
        << "\n";
