@@ -89,6 +89,10 @@ Mesh::Mesh(const std::vector<std::array<real_t, 3>>& raw_vertices,
            const std::vector<std::array<std::size_t, 3>>& raw_faces)
 :nV{raw_vertices.size()}, nF{raw_faces.size()}
 {
+    // variable to count actual number of edge
+    // if iE != nE, mesh is not closed properly
+    std::size_t iE{};
+
     //-------------------------------------------------------------------------
     nE = nF * 3 / 2; // triangular mesh
     vertex.reserve(nV);
@@ -159,6 +163,7 @@ Mesh::Mesh(const std::vector<std::array<real_t, 3>>& raw_vertices,
             else
             {
                 edge.emplace_back(edge.size(), &halfedge[i*3 + j]);
+                ++iE;
                 existedge.emplace(key, edge.size() - 1);
                 adj_mat.insert(rf[j%3], rf[(j+1)%3]) = 1;
                 adj_mat.insert(rf[(j+1)%3], rf[j%3]) = 1;
@@ -167,6 +172,11 @@ Mesh::Mesh(const std::vector<std::array<real_t, 3>>& raw_vertices,
             }
         }
         face[i].he = &halfedge[i*3];
+    }
+
+    if (iE != nE)
+    {
+        throw std::runtime_error("ERROR: Input mesh is not properly closed.");
     }
 
     // loop 2 -----------------------------------------------------------------
@@ -178,6 +188,10 @@ Mesh::Mesh(const std::vector<std::array<real_t, 3>>& raw_vertices,
         halfedge[i*3 + 1].next = &halfedge[i*3 + 2];
         halfedge[i*3 + 2].prev = &halfedge[i*3 + 1];
         halfedge[i*3 + 2].next = &halfedge[i*3];
+
+        vertex[halfedge[i*3].from->idx].he_out = &halfedge[i*3];
+        vertex[halfedge[i*3 + 1].from->idx].he_out = &halfedge[i*3 + 1];
+        vertex[halfedge[i*3 + 2].from->idx].he_out = &halfedge[i*3 + 2];
     }
 }
 
