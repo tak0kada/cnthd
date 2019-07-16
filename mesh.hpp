@@ -3,12 +3,15 @@
 #include <array>
 #include <vector>
 #include <string>
-#include <utility>
-#include <tuple>
+#include <utility> // for std::pair
+#include <tuple> // Face::vertex() returns tuple
+#include <queue>
+#include <boost/dynamic_bitset.hpp>
 #include <iostream>
 #include <fstream>
 #include <exception>
 #include <algorithm>
+#include <limits> // for std::numeric_limits
 #include <eigen3/Eigen/Sparse>
 #include <eigen3/Eigen/Core>
 #include <boost/format.hpp>
@@ -60,7 +63,6 @@ struct Mesh
             const real_t x = v.x();
             const real_t y = v.y();
             const real_t z = v.z();
-            // the formula is calculated using sympy
             v.p[0] = q[0]*q[0]*x + 2*q[0]*q[2]*z - 2*q[0]*q[3]*y + q[1]*q[1]*x + 2*q[1]*q[2]*y + 2*q[1]*q[3]*z - q[2]*q[2]*x - q[3]*q[3]*x;
             v.p[1] = q[0]*q[0]*y - 2*q[0]*q[1]*z + 2*q[0]*q[3]*x - q[1]*q[1]*y + 2*q[1]*q[2]*x + q[2]*q[2]*y + 2*q[2]*q[3]*z - q[3]*q[3]*y;
             v.p[2] = q[0]*q[0]*z + 2*q[0]*q[1]*y - 2*q[0]*q[2]*x - q[1]*q[1]*z + 2*q[1]*q[3]*x - q[2]*q[2]*z + 2*q[2]*q[3]*y + q[3]*q[3]*z;
@@ -158,6 +160,7 @@ Mesh::Mesh(const std::vector<std::array<real_t, 3>>& raw_vertices,
             if (iter != existedge.end())
             {
                 halfedge[i*3 + j].pair = edge[iter->second].he;
+                edge[iter->second].he->pair = &halfedge[i*3 + j];
                 halfedge[i*3 + j].edge = &edge[iter->second];
             }
             else
@@ -195,13 +198,102 @@ Mesh::Mesh(const std::vector<std::array<real_t, 3>>& raw_vertices,
     }
 }
 
-// not implemented
 Mesh& Mesh::fix_orientation()
 {
-    // draft version is below
-    // https://github.com/tak0kada/cnthd/commit/e83fdae303cf77ccdc51c4271f7f5d2da1160539#diff-dab052ca81d83cdfb81dc79cf4dcc38d
-    // note the algorithm has bugs in it.
-    std::cerr << "NOTE: Mesh::fix_orientation is not implmented!" << std::endl;
+    //--------------------------------------------------------------------------
+    // make the orientation of the faces coherent, using breadth first step
+    //--------------------------------------------------------------------------
+    // construct dual adjacent list
+    // 3 because number of neighborhood vertices of dual triangular mesh
+    std::vector<std::array<std::size_t, 3>> dual_adj_list{nF};
+    // if neighborhood face is invertedly oriented true, else false
+    std::vector<std::array<bool, 3>> local_flip{nF};
+    for (const auto& f: face)
+    {
+        dual_adj_list[f.idx][0] = f.he->pair->face->idx;
+        dual_adj_list[f.idx][1] = f.he->next->pair->face->idx;
+        dual_adj_list[f.idx][2] = f.he->prev->pair->face->idx;
+        local_flip[f.idx][0] = (f.he->from->idx != f.he->pair->to->idx);
+        local_flip[f.idx][1] = (f.he->next->from->idx != f.he->next->pair->to->idx);
+        local_flip[f.idx][2] = (f.he->prev->from->idx != f.he->prev->pair->to->idx);
+    }
+
+    // use boost instead because std::vector<bool> has some problem
+    // default value of boost::dynamic_bitset is 0 (false)
+    boost::dynamic_bitset<> is_visited(nF);
+    // orientation conpaired to face[0], false if same, true if flipped
+    boost::dynamic_bitset<> flip(nF);
+
+    // faces to visit in the next loop
+    std::queue<std::size_t> q;
+    q.push(face[0].idx);
+
+    // std::size_t visited{1};
+    // while (visited < nF)
+    while (!q.empty())
+    {
+        std::size_t& cur = q.front();
+        // index to access neighborhood face from 'cur'-th face
+        for (std::size_t i = 0; i < 3; ++i)
+        {
+            // index of neighborhood face from 'cur'-th face
+            const auto& fi = dual_adj_list[cur][i];
+            if (!is_visited[fi])
+            {
+                // use xor to calculte flip
+                flip[fi] = flip[cur] ^ local_flip[cur][i];
+                is_visited[fi] = true;
+                // ++visited;
+                q.push(fi);
+            }
+        }
+        q.pop();
+    }
+
+    //--------------------------------------------------------------------------
+    // check whether mesh is properly oriented
+    //--------------------------------------------------------------------------
+    // if mesh is inverted, volume becomes negative, vice versa
+    // an iterator to point to the Vertex with the largest x coordinate
+    real_t vol{};
+    for (std::size_t i = 0; i < nF; ++i)
+    {
+        const auto& f{face[i]};
+        const auto& [v0, v1, v2] = f.vertex();
+        const int sgn = (flip[i]? -1 : 1);
+        vol += sgn * (v0->x()*v1->y()*v2->z() - v0->x()*v1->z()*v2->y() - v0->y()*v1->x()*v2->z() + v0->y()*v1->z()*v2->x() + v0->z()*v1->x()*v2->y() - v0->z()*v1->y()*v2->x());
+    }
+    if (vol < 0)
+    {
+        flip.flip();
+    }
+
+    // execute flip
+    for (std::size_t i = 0; i < nF; ++i)
+    {
+        if (flip[i])
+        {
+            // invert face
+            std::tuple<Vertex*, Vertex*, Vertex*> vertex = face[i].vertex();
+            auto *v0 = std::get<0>(vertex);
+            std::get<0>(vertex) = std::get<2>(vertex);
+            std::get<2>(vertex) = v0;
+
+            // invert halfedge
+            std::swap(face[i].he->next, face[i].he->prev);
+            std::swap(face[i].he->next->next, face[i].he->next->prev);
+            std::swap(face[i].he->prev->next, face[i].he->prev->prev);
+            std::swap(face[i].he->from, face[i].he->to);
+            std::swap(face[i].he->next->from, face[i].he->next->to);
+            std::swap(face[i].he->prev->from, face[i].he->prev->to);
+
+            // invert Vertex
+            face[i].he->from->he_out = face[i].he;
+            face[i].he->next->from->he_out = face[i].he->next;
+            face[i].he->prev->from->he_out = face[i].he->prev;
+        }
+    }
+
     return *this;
 }
 
