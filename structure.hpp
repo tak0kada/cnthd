@@ -21,9 +21,10 @@ namespace cnthd {
 
 struct HalfEdge;
 struct Vertex;
+struct Vector;
 struct Edge;
-struct HalfEdge;
 struct Face;
+struct Quaternion;
 
 
 //------------------------------------------------------------------------------

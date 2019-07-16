@@ -32,12 +32,14 @@ struct Mesh
     std::size_t nE;
     std::size_t nF;
 
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    // EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Eigen::SparseMatrix<bool, Eigen::RowMajor> adj_mat;
     std::vector<std::vector<std::size_t>> adj_list;
 
     Mesh(const std::vector<std::array<real_t, 3>>& raw_vertices,
          const std::vector<std::array<std::size_t, 3>>& raw_faces);
+
+    Mesh& fix_orientation();
 
     int num_genus() const
     {
@@ -82,9 +84,6 @@ struct Mesh
         }
         return *this;
     }
-
-    // not implemented
-    Mesh& fix_orientation();
 };
 
 Mesh::Mesh(const std::vector<std::array<real_t, 3>>& raw_vertices,
