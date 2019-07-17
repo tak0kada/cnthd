@@ -32,7 +32,7 @@ struct Mesh
     std::size_t nE;
     std::size_t nF;
 
-    // EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Eigen::SparseMatrix<bool, Eigen::RowMajor> adj_mat;
     std::vector<std::vector<std::size_t>> adj_list;
 
@@ -346,6 +346,17 @@ Mesh read_obj(const std::string& path)
 
         // discard the rest of the line
         ifs.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
+
+    std::size_t nV{raw_vertices.size()};
+    std::size_t nF{raw_faces.size()};
+    std::size_t nE = nF * 3 / 2; // triangular mesh
+    if (nV - nE + nF - 2 != 0)
+    {
+        std::cerr << boost::format("nV: %zu, nE: %zu, nF: %zu, g = 1 - 0.5 * (nV - nE + nF) = %d")
+                         % nV % nE % nF % (1 - (nV - nE + nF) * 0.5)
+                  << std::endl;
+        throw std::runtime_error("ERROR: input mesh is not 2-manifold with genus 0: " + path + ".");
     }
 
     Mesh mesh{raw_vertices, raw_faces};
