@@ -274,6 +274,7 @@ struct Quaternion
         }
     }
 
+    #pragma GCC diagnostic ignored "-Wreturn-type"
     template<typename T = std::size_t,
              typename std::enable_if<std::is_convertible<T, const std::size_t>::value>::type* = nullptr>
     const real_t& operator[](const T& i) const
