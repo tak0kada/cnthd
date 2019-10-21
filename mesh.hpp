@@ -161,6 +161,7 @@ Mesh::Mesh(const std::vector<std::array<real_t, 3>>& raw_vertices,
                 halfedge[i*3 + j].pair = edge[iter->second].he;
                 edge[iter->second].he->pair = &halfedge[i*3 + j];
                 halfedge[i*3 + j].edge = &edge[iter->second];
+                halfedge[i*3 + j].edge->he->edge = &edge[iter->second];
             }
             else
             {
