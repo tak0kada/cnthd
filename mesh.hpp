@@ -86,7 +86,7 @@ struct Mesh
     }
 };
 
-Mesh::Mesh(const std::vector<std::array<real_t, 3>>& raw_vertices,
+inline Mesh::Mesh(const std::vector<std::array<real_t, 3>>& raw_vertices,
            const std::vector<std::array<std::size_t, 3>>& raw_faces)
 :nV{raw_vertices.size()}, nF{raw_faces.size()}
 {
@@ -198,7 +198,7 @@ Mesh::Mesh(const std::vector<std::array<real_t, 3>>& raw_vertices,
     }
 }
 
-Mesh& Mesh::fix_orientation()
+inline Mesh& Mesh::fix_orientation()
 {
     //--------------------------------------------------------------------------
     // make the orientation of the faces coherent, using breadth first step
